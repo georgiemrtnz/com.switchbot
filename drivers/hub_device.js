@@ -262,7 +262,11 @@ class HubDevice extends OAuth2Device
 		const dd = this.getData();
 		const oAuth2Client = this.getOAuth2ClientForDevice();
 
-		if (this.homey.app.openToken)
+		// Newer SwitchBot devices such as Curtain3 are not controllable through
+		// the legacy API-token endpoint even when that endpoint can still return
+		// status. Let those drivers opt into OAuth commands, with the token route
+		// retained as a fallback when OAuth is unavailable.
+		if (this.homey.app.openToken && (!this.preferOAuthCommands || !oAuth2Client))
 		{
 			this.homey.app.updateLog(`Sending ${this.homey.app.varToString(data)} to ${dd.id} using API key`, 3, 'hub');
 			try

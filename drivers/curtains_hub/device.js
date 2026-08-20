@@ -12,6 +12,9 @@ class CurtainsHubDevice extends HubDevice
 	 */
 	async onInit()
 	{
+		// Curtain3 groups are rejected by SwitchBot's legacy API-token command
+		// endpoint ("not support device type") but are supported by OAuth.
+		this.preferOAuthCommands = true;
 		await super.onInit();
 
 		if (this.hasCapability('open_close'))
