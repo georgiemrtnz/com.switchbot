@@ -275,11 +275,8 @@ class CurtainsBLEDevice extends Homey.Device
 
 		this.sendingCommand = false;
 
-		if (response instanceof Error)
-		{
-			this.homey.app.updateLog(`!!!!!!! Command for ${name} failed\r\n`, 0, 'ble');
-			throw response;
-		}
+		this.homey.app.updateLog(`!!!!!!! Command for ${name} failed\r\n`, 0, 'ble');
+		throw response instanceof Error ? response : new Error(`BLE command failed for ${name} after all retries`);
 	}
 
 	async _operateCurtainsLoop(name, bytes)

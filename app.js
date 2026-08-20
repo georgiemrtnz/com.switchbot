@@ -3244,7 +3244,7 @@ class MyApp extends OAuth2App
 			this.blePolling = true;
 			this.updateLog('\r\n------ Polling BLE Starting ------', 'hub');
 
-			const promises = [];
+			const devicesToPoll = [];
 			const nowMs = Date.now();
 			let staleFallbackPolls = 0;
 			try
@@ -3285,7 +3285,7 @@ class MyApp extends OAuth2App
 					{
 						const fallbackState = this.getOrCreateBLEAdvertisementDeviceState(deviceKey, device);
 						fallbackState.pollCount = (fallbackState.pollCount || 0) + 1;
-						promises.push(device.getDeviceValues());
+						devicesToPoll.push(device);
 						continue;
 					}
 
@@ -3300,7 +3300,7 @@ class MyApp extends OAuth2App
 					{
 						state.pollCount = (state.pollCount || 0) + 1;
 						staleFallbackPolls++;
-						promises.push(device.getDeviceValues());
+						devicesToPoll.push(device);
 					}
 				}
 
@@ -3309,8 +3309,21 @@ class MyApp extends OAuth2App
 					this.updateLog(`BLE stale-subscription fallback polling for ${staleFallbackPolls} device(s)`, 1, 'ble');
 				}
 
-				this.updateLog('Polling BLE: waiting for devices to update', 'hub');
-				await Promise.all(promises);
+				this.updateLog('Polling BLE: updating devices sequentially', 'hub');
+				for (const device of devicesToPoll)
+				{
+					try
+					{
+						// Homey exposes a single local BLE radio. Parallel find/connect
+						// operations make otherwise visible devices intermittently disappear.
+						await device.getDeviceValues();
+					}
+					catch (deviceErr)
+					{
+						const deviceName = device.getName ? device.getName() : 'unknown BLE device';
+						this.updateLog(`BLE poll failed for ${deviceName}: ${deviceErr.message}`, 0, 'ble');
+					}
+				}
 			}
 			catch (err)
 			{
