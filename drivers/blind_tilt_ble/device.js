@@ -298,27 +298,14 @@ class BlindTiltBLEDevice extends Homey.Device
 				this.homey.app.updateLog(`Getting write characteristic for ${name}`, 'ble');
 				const bleCharacteristic = await bleService.getCharacteristic('cba20002224d11e69fb80002a5d5c51b');
 
-				if (parseInt(this.homey.version, 10) >= 6)
-				{
-					this.homey.app.updateLog(`Getting notify characteristic for ${name}`, 'ble');
-					const bleNotifyCharacteristic = await bleService.getCharacteristic('cba20003224d11e69fb80002a5d5c51b');
-
-					try
-					{
-						await bleNotifyCharacteristic.subscribeToNotifications((data) =>
-						{
-							sending = false;
-							this.homey.app.updateLog(`received notification for ${name}: ${this.homey.app.varToString(data)}`, 'ble');
-						});
-					}
-					catch (err)
-					{
-						this.homey.app.updateLog(`subscribeToNotifications: ${name}: ${err.message}`, 0, 'ble');
-					}
-				}
-
+				// Blind Tilt firmware v2 advertises its state separately. Waiting for a
+				// notification subscription before every control write is unnecessary and
+				// unreliable on Homey Pro: a subscription timeout can disconnect the
+				// peripheral before the command is ever written. A completed write is the
+				// acknowledgement; advertisement polling refreshes the position afterwards.
 				this.homey.app.updateLog(`Writing data to ${name}`, 'ble');
 				await bleCharacteristic.write(reqBuf);
+				sending = false;
 			}
 			catch (err)
 			{
