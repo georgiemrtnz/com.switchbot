@@ -231,6 +231,27 @@ class CurtainsHubDevice extends HubDevice
 			commandType: 'command',
 		};
 
+		// Curtain3 groups are paired from the shared SwitchBot account rather
+		// than a per-device OAuth session. Resolve that saved account session
+		// directly so `HubDevice` cannot fall back to the legacy API-token route,
+		// which rejects Curtain3 with "not support device type".
+		const oAuth2Client = this.homey.app.getFirstSavedOAuth2Client();
+		if (oAuth2Client)
+		{
+			const dd = this.getData();
+			this.homey.app.updateLog(`Sending ${this.homey.app.varToString(data)} to ${dd.id} using shared OAuth`, 3, 'hub');
+			const response = await oAuth2Client.setDeviceData(dd.id, data);
+			const statusCode = Number.parseInt(response?.statusCode ?? response?.body?.statusCode ?? 100, 10);
+			if (statusCode !== 100)
+			{
+				const message = response?.message ?? response?.body?.message ?? 'Command rejected by SwitchBot';
+				throw new Error(`${statusCode}: ${message}`);
+			}
+
+			this.homey.app.updateLog(`Success sending command to ${dd.id} using shared OAuth`, 2, 'hub');
+			return true;
+		}
+
 		return super.setDeviceData(data);
 	}
 
