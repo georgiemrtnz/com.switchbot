@@ -272,6 +272,7 @@ class HubDevice extends OAuth2Device
 			catch (err)
 			{
 				this.homey.app.updateLog(this.homey.app.varToString(err), 'hub');
+				throw err;
 			}
 			this.homey.app.updateLog(`Success sending command to ${dd.id} using API key`, 'hub');
 			return result;
