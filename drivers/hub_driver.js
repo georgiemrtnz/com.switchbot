@@ -121,7 +121,11 @@ class HubDriver extends OAuth2Driver
 							// Add this device to the table
 							devices.push(
 								{
-									name: device.deviceName,
+									// Grouped Blind Tilts expose their group only through the
+									// master record. Preserve the user-facing group name so
+									// Homey adds one "Blinds" device rather than an opaque
+									// member name such as "Blind Tilt M".
+									name: device.groupName || device.deviceName,
 									data,
 								},
 							);
