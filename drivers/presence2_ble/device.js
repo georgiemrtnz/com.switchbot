@@ -37,8 +37,26 @@ class PresenceBLEDevice extends Homey.Device
 		this.bestRSSI = 100;
 		this.bestHub = '';
 		this.lastHubStateFingerprint = null;
+		this.peripheralMisses = 0;
 		this.homey.app.registerBLEPolling(this);
 		this.log('PresenceBLEDevice has been initialized');
+	}
+
+	async markPeripheralAvailable()
+	{
+		this.peripheralMisses = 0;
+		await this.setAvailable();
+	}
+
+	async recordPeripheralMiss(deviceMac)
+	{
+		this.peripheralMisses = (this.peripheralMisses || 0) + 1;
+		if (this.peripheralMisses < 2)
+		{
+			return;
+		}
+
+		await this.setUnavailable(`SwitchBot BLE device not found: ${deviceMac}`);
 	}
 
 	logESP32StateIfChanged(state)
@@ -169,6 +187,7 @@ class PresenceBLEDevice extends Homey.Device
 				{
 					const name = this.getName();
 					this.homey.app.updateLog(`BLE device ${name} (MAC: ${deviceMac}) not found`, 'ble');
+					await this.recordPeripheralMiss(deviceMac);
 					return;
 				}
 
@@ -182,6 +201,7 @@ class PresenceBLEDevice extends Homey.Device
 					this.homey.app.markBLEPollServiceData(this, true, rssi);
 					this.homey.app.updateLog(`Parsed Presence BLE (MAC: ${deviceMac}): ${this.homey.app.varToString(data)}`, 3, 'ble');
 					this.updateCapabilities(data);
+					await this.markPeripheralAvailable();
 					this.homey.app.updateLog(`Parsed Presence BLE (MAC: ${deviceMac}): battery = ${data.serviceData.battery}`, 3, 'ble');
 				}
 				else
@@ -203,6 +223,7 @@ class PresenceBLEDevice extends Homey.Device
 			if (/Peripheral\s+Not\s+Found/i.test(message))
 			{
 				this.homey.app.updateLog(`${message} (MAC: ${deviceMac})`, 0, 'ble');
+				await this.recordPeripheralMiss(deviceMac);
 			}
 			else
 			{
@@ -246,6 +267,7 @@ class PresenceBLEDevice extends Homey.Device
 					}
 
 					this.updateCapabilities(data);
+					await this.markPeripheralAvailable();
 				}
 			}
 		}
