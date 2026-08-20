@@ -4,6 +4,10 @@
 
 const Homey = require('homey');
 
+// Presence sensors advertise intermittently to conserve battery. A small number
+// of scan misses is expected and must not make a healthy sensor unavailable.
+const PERIPHERAL_MISSES_BEFORE_UNAVAILABLE = 5;
+
 class PresenceBLEDevice extends Homey.Device
 {
 
@@ -39,6 +43,10 @@ class PresenceBLEDevice extends Homey.Device
 		this.lastHubStateFingerprint = null;
 		this.peripheralMisses = 0;
 		this.homey.app.registerBLEPolling(this);
+		// Availability from a previous app run is not reliable for a
+		// battery-powered beacon. Start optimistically and let sustained scan
+		// misses determine whether the sensor is genuinely unreachable.
+		await this.setAvailable();
 		this.log('PresenceBLEDevice has been initialized');
 	}
 
@@ -51,7 +59,7 @@ class PresenceBLEDevice extends Homey.Device
 	async recordPeripheralMiss(deviceMac)
 	{
 		this.peripheralMisses = (this.peripheralMisses || 0) + 1;
-		if (this.peripheralMisses < 2)
+		if (this.peripheralMisses < PERIPHERAL_MISSES_BEFORE_UNAVAILABLE)
 		{
 			return;
 		}
@@ -193,6 +201,9 @@ class PresenceBLEDevice extends Homey.Device
 
 				this.homey.app.updateLog(this.homey.app.varToString(bleAdvertisement), 4, 'ble');
 				const { rssi } = bleAdvertisement;
+				// A visible advertisement proves that the sensor is reachable even if
+				// this particular packet has no parsable service data.
+				await this.markPeripheralAvailable();
 				this.setCapabilityValue('rssi', rssi).catch(this.error);
 
 				const data = this.driver.parse(bleAdvertisement);
