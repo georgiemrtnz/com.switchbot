@@ -3290,10 +3290,13 @@ class MyApp extends OAuth2App
 					}
 
 					const state = this.getOrCreateBLEAdvertisementDeviceState(deviceKey, device);
-					const lastLocalSeenAt = state.localSeenAt || 0;
+					// A received advertisement is not necessarily a usable state update.
+					// Homey can emit a payload-less or otherwise unparsable advertisement
+					// between valid packets. Keeping a device out of fallback polling merely
+					// because one of those packets was received leaves its Homey state stale.
+					// Only a successfully parsed packet may suppress the direct BLE poll.
 					const lastParsedSeenAt = state.parsedSeenAt || 0;
-					const lastSeenAt = Math.max(lastLocalSeenAt, lastParsedSeenAt);
-					if (!lastSeenAt || ((nowMs - lastSeenAt) >= BLE_ADVERTISEMENT_STALE_POLL_MS))
+					if (!lastParsedSeenAt || ((nowMs - lastParsedSeenAt) >= BLE_ADVERTISEMENT_STALE_POLL_MS))
 					{
 						state.pollCount = (state.pollCount || 0) + 1;
 						staleFallbackPolls++;
