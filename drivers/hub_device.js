@@ -510,13 +510,9 @@ class HubDevice extends OAuth2Device
 		const oAuth2Client = this.getOAuth2ClientForDevice();
 		if (this.homey.app.openToken)
 		{
-			const data = await this.homey.app.hub.startScene(dd.id);
-			if (data.statusCode !== 100)
-			{
-				throw new Error(`${data.statusCode}: ${data.message} (${this.homey.app.apiCalls}) API calls`);
-			}
-
-			return data.body;
+			// hub_interface.startScene validates SwitchBot's response code and
+			// returns true on success, rather than the OAuth response object.
+			return this.homey.app.hub.startScene(dd.id);
 		}
 
 		if (oAuth2Client)
