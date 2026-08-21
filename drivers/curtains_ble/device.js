@@ -288,11 +288,19 @@ class CurtainsBLEDevice extends Homey.Device
 			this.homey.app.updateLog(`Looking for BLE device: ${name}`, 'ble');
 
 			const dd = this.getData();
-			const bleAdvertisement = await this.homey.ble.find(dd.id);
+			let bleAdvertisement = await this.homey.ble.find(dd.id);
 			if (!bleAdvertisement)
 			{
-				this.homey.app.updateLog(`BLE device ${name} not found`, 2, 'ble');
-				return false;
+				// `find()` only sees Homey's current advertisement cache. Refresh it
+				// once for an interactive command before treating the device as gone.
+				this.homey.app.updateLog(`BLE device ${name} not cached; refreshing discovery`, 2, 'ble');
+				await this.homey.ble.discover(['cba20d00224d11e69fb80002a5d5c51b'], 2000);
+				bleAdvertisement = await this.homey.ble.find(dd.id);
+				if (!bleAdvertisement)
+				{
+					this.homey.app.updateLog(`BLE device ${name} not found after refresh`, 2, 'ble');
+					return false;
+				}
 			}
 
 			this.homey.app.updateLog(`Connecting to BLE device: ${name}`, 'ble');
