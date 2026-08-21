@@ -12,6 +12,10 @@ class Relay2pmHubDevice extends HubDevice
 	 */
 	async onInit()
 	{
+		// Relay Switch 2PM devices can expose status through the legacy API but
+		// reject its command endpoint with 190 ("not support device type").
+		// Prefer the account OAuth command endpoint, which supports the relay.
+		this.preferOAuthCommands = true;
 		this.initialised = false;
 		await super.onInit();
 
