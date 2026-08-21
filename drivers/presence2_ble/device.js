@@ -4,9 +4,11 @@
 
 const Homey = require('homey');
 
-// Presence sensors advertise intermittently to conserve battery. A small number
-// of scan misses is expected and must not make a healthy sensor unavailable.
-const PERIPHERAL_MISSES_BEFORE_UNAVAILABLE = 5;
+// Presence sensors advertise intermittently to conserve battery. A failed
+// point-in-time lookup does not prove the peripheral is offline: Homey can
+// still receive advertisements between those lookups. Only mark it unavailable
+// after a sustained absence of confirmed advertisements.
+const PERIPHERAL_UNAVAILABLE_AFTER_MS = 15 * 60 * 1000;
 
 class PresenceBLEDevice extends Homey.Device
 {
@@ -41,7 +43,7 @@ class PresenceBLEDevice extends Homey.Device
 		this.bestRSSI = 100;
 		this.bestHub = '';
 		this.lastHubStateFingerprint = null;
-		this.peripheralMisses = 0;
+		this.lastPeripheralSeenAt = Date.now();
 		this.homey.app.registerBLEPolling(this);
 		// Availability from a previous app run is not reliable for a
 		// battery-powered beacon. Start optimistically and let sustained scan
@@ -52,15 +54,20 @@ class PresenceBLEDevice extends Homey.Device
 
 	async markPeripheralAvailable()
 	{
-		this.peripheralMisses = 0;
+		this.lastPeripheralSeenAt = Date.now();
 		await this.setAvailable();
 	}
 
 	async recordPeripheralMiss(deviceMac)
 	{
-		this.peripheralMisses = (this.peripheralMisses || 0) + 1;
-		if (this.peripheralMisses < PERIPHERAL_MISSES_BEFORE_UNAVAILABLE)
+		const elapsedSincePeripheralSeen = Date.now() - (this.lastPeripheralSeenAt || 0);
+		if (elapsedSincePeripheralSeen < PERIPHERAL_UNAVAILABLE_AFTER_MS)
 		{
+			this.homey.app.updateLog(
+				`Ignoring transient Presence BLE scan miss for ${deviceMac}; last advertisement was ${elapsedSincePeripheralSeen}ms ago`,
+				3,
+				'ble',
+			);
 			return;
 		}
 
