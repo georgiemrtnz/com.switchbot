@@ -39,28 +39,6 @@ class MyApp extends OAuth2App
 		return parsedValue;
 	}
 
-	async awaitWithTimeout(promise, operation, timeoutMs = 10000)
-	{
-		let timer;
-		try
-		{
-			return await Promise.race([
-				promise,
-				new Promise((resolve, reject) =>
-				{
-					timer = this.homey.setTimeout(() => reject(new Error(`Timed out while ${operation}`)), timeoutMs);
-				}),
-			]);
-		}
-		finally
-		{
-			if (timer)
-			{
-				this.homey.clearTimeout(timer);
-			}
-		}
-	}
-
 	installProcessErrorGuards()
 	{
 		if (this.processErrorGuardsInstalled)
@@ -478,33 +456,23 @@ class MyApp extends OAuth2App
 
 		this.hub = new HubInterface(this.homey);
 
-		try
-		{
-			this.homeyID = await this.awaitWithTimeout(this.homey.cloud.getHomeyId(), 'getting the Homey ID');
-		}
-		catch (err)
-		{
-			this.homeyID = 'unknown-homey';
-			this.updateLog(`Failed to get Homey ID at startup: ${err.message}`, 0, 'all');
-		}
+		// Cloud identity is useful for diagnostics, but it must never prevent
+		// the local automation app from becoming ready. The cloud API can wait
+		// indefinitely while Homey is rate-limited or reconnecting.
+		this.homeyID = 'unknown-homey';
+		this.homey.cloud.getHomeyId()
+			.then((homeyID) =>
+			{
+				this.homeyID = homeyID;
+				this.homeyHash = this.hashCode(homeyID).toString();
+			})
+			.catch((err) => this.updateLog(`Failed to get Homey ID at startup: ${err.message}`, 0, 'all'));
 
 		// Webhook setup starts when a hub/cloud device registers for webhook updates.
 		this.updateLog('SwitchBot webhook setup deferred until a hub/cloud device is registered', 1, 'all');
 
 		this.homeyHash = this.homeyID;
 		this.homeyHash = this.hashCode(this.homeyHash).toString();
-
-		try
-		{
-			this.homeyIP = await this.awaitWithTimeout(this.homey.cloud.getLocalAddress(), 'getting the local Homey address');
-		}
-		catch (err)
-		{
-			// For cloud debugging only
-			this.logLevel = 0;
-			this.safeSetSetting('logLevel', this.logLevel);
-			this.homeyIP = null;
-		}
 
 		// Callback for app settings changed
 		this.homey.settings.on('set', async (setting) =>
@@ -546,19 +514,17 @@ class MyApp extends OAuth2App
 		// Set to true to enable use of my BLE hub (WIP)
 		this.BLEHub = null;
 
-		try
-		{
-			this.homeyIP = await this.awaitWithTimeout(this.homey.cloud.getLocalAddress(), 'getting the local Homey address');
-			if (this.homeyIP)
+		this.homeyIP = null;
+		this.homey.cloud.getLocalAddress()
+			.then((homeyIP) =>
 			{
-				this.BLEHub = new BLEHubInterface(this.homey, this.homeyIP);
-			}
-		}
-		catch (err)
-		{
-			// Homey cloud or Bridge so no LAN access
-			this.homeyIP = null;
-		}
+				if (homeyIP)
+				{
+					this.homeyIP = homeyIP;
+					this.BLEHub = new BLEHubInterface(this.homey, homeyIP);
+				}
+			})
+			.catch(() => undefined);
 
 		this.onHubPoll = this.onHubPoll.bind(this);
 		this.hubDevices = 0;
