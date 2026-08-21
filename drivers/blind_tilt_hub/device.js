@@ -12,6 +12,10 @@ class BlindTiltHubDevice extends HubDevice
 	 */
 	async onInit()
 	{
+		// Blind Tilt devices can expose status through the legacy API but may
+		// reject its command endpoint with 190 ("not support device type").
+		// Prefer the account OAuth command endpoint for movement commands.
+		this.preferOAuthCommands = true;
 		await super.onInit();
 
 		// try
