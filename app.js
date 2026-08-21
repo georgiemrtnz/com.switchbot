@@ -39,6 +39,28 @@ class MyApp extends OAuth2App
 		return parsedValue;
 	}
 
+	async awaitWithTimeout(promise, operation, timeoutMs = 10000)
+	{
+		let timer;
+		try
+		{
+			return await Promise.race([
+				promise,
+				new Promise((resolve, reject) =>
+				{
+					timer = this.homey.setTimeout(() => reject(new Error(`Timed out while ${operation}`)), timeoutMs);
+				}),
+			]);
+		}
+		finally
+		{
+			if (timer)
+			{
+				this.homey.clearTimeout(timer);
+			}
+		}
+	}
+
 	installProcessErrorGuards()
 	{
 		if (this.processErrorGuardsInstalled)
@@ -458,7 +480,7 @@ class MyApp extends OAuth2App
 
 		try
 		{
-			this.homeyID = await this.homey.cloud.getHomeyId();
+			this.homeyID = await this.awaitWithTimeout(this.homey.cloud.getHomeyId(), 'getting the Homey ID');
 		}
 		catch (err)
 		{
@@ -474,7 +496,7 @@ class MyApp extends OAuth2App
 
 		try
 		{
-			this.homeyIP = await this.homey.cloud.getLocalAddress();
+			this.homeyIP = await this.awaitWithTimeout(this.homey.cloud.getLocalAddress(), 'getting the local Homey address');
 		}
 		catch (err)
 		{
@@ -526,7 +548,7 @@ class MyApp extends OAuth2App
 
 		try
 		{
-			this.homeyIP = await this.homey.cloud.getLocalAddress();
+			this.homeyIP = await this.awaitWithTimeout(this.homey.cloud.getLocalAddress(), 'getting the local Homey address');
 			if (this.homeyIP)
 			{
 				this.BLEHub = new BLEHubInterface(this.homey, this.homeyIP);
