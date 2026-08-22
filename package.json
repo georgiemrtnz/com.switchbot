@@ -5,6 +5,7 @@
 	"main": "app.js",
 	"scripts": {
 		"build": "homey app build",
+		"test": "node --test test/*.test.js",
 		"validate": "homey app validate --level verified",
 		"publish": "homey app publish"
 	},
