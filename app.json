@@ -7000,13 +7000,45 @@
       },
       "class": "blinds",
       "capabilities": [
-        "windowcoverings_tilt_set"
+        "windowcoverings_closed",
+        "windowcoverings_tilt_up",
+        "windowcoverings_tilt_down",
+        "windowcoverings_tilt_set",
+        "position",
+        "measure_battery"
       ],
       "energy": {
         "batteries": [
           "INTERNAL"
         ]
-      }
+      },
+      "settings": [
+        {
+          "id": "closePosition",
+          "type": "radio",
+          "label": {
+            "en": "Quick-action close direction"
+          },
+          "value": "down",
+          "values": [
+            {
+              "id": "down",
+              "label": {
+                "en": "Tilt down"
+              }
+            },
+            {
+              "id": "up",
+              "label": {
+                "en": "Tilt up"
+              }
+            }
+          ],
+          "hint": {
+            "en": "Choose which fully closed direction the Open/Close quick action uses."
+          }
+        }
+      ]
     },
     {
       "id": "bot_ble",

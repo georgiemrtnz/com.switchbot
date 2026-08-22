@@ -17,6 +17,7 @@ class BlindTiltHubDevice extends HubDevice
 		// Prefer the account OAuth command endpoint for movement commands.
 		this.preferOAuthCommands = true;
 		await super.onInit();
+		await this.addMissingCapabilities();
 
 		// try
 		// {
@@ -27,11 +28,33 @@ class BlindTiltHubDevice extends HubDevice
 		// 	this.setUnavailable(err.message);
 		// }
 		this.registerCapabilityListener('windowcoverings_tilt_set', this.onCapabilityPosition.bind(this));
+		this.registerCapabilityListener('windowcoverings_closed', this.onCapabilityClosed.bind(this));
+		this.registerCapabilityListener('windowcoverings_tilt_up', this.onCapabilityTiltUp.bind(this));
+		this.registerCapabilityListener('windowcoverings_tilt_down', this.onCapabilityTiltDown.bind(this));
 
 		const dd = this.getData();
 		this.homey.app.registerHomeyWebhook(dd.id).catch(this.error);
 
 		this.log('BlindTiltHubDevice has been initialising');
+	}
+
+	async addMissingCapabilities()
+	{
+		const capabilities = [
+			'windowcoverings_closed',
+			'windowcoverings_tilt_up',
+			'windowcoverings_tilt_down',
+			'position',
+			'measure_battery',
+		];
+
+		for (const capability of capabilities)
+		{
+			if (!this.hasCapability(capability))
+			{
+				await this.addCapability(capability);
+			}
+		}
 	}
 
 	/**
@@ -74,9 +97,29 @@ class BlindTiltHubDevice extends HubDevice
 		return this._operateCurtain('setPosition', `down;${parseInt(value * 200, 10)}`);
 	}
 
+	async onCapabilityClosed(value, opts)
+	{
+		if (!value)
+		{
+			return this._operateCurtain('fullyOpen', '');
+		}
+
+		const closePosition = this.getSetting('closePosition');
+		return this._operateCurtain(closePosition === 'up' ? 'closeUp' : 'closeDown', '');
+	}
+
+	async onCapabilityTiltUp(value, opts)
+	{
+		return this._operateCurtain('closeUp', '');
+	}
+
+	async onCapabilityTiltDown(value, opts)
+	{
+		return this._operateCurtain('closeDown', '');
+	}
+
 	async _operateCurtain(command, parameter)
 	{
-		this.setCapabilityValue('windowcoverings_tilt_set', null).catch(this.error);
 		const data = {
 			command,
 			parameter,
@@ -84,6 +127,28 @@ class BlindTiltHubDevice extends HubDevice
 		};
 
 		return super.setDeviceData(data);
+	}
+
+	updatePosition(position)
+	{
+		const numericPosition = Number(position);
+		if (!Number.isFinite(numericPosition))
+		{
+			return;
+		}
+
+		const normalizedPosition = Math.min(1, Math.max(0, numericPosition));
+		this.setCapabilityValue('windowcoverings_tilt_set', normalizedPosition).catch(this.error);
+		this.setCapabilityValue('position', Math.round(normalizedPosition * 100)).catch(this.error);
+		this.setCapabilityValue('windowcoverings_closed', normalizedPosition <= 0.01 || normalizedPosition >= 0.99).catch(this.error);
+
+		if (this.lastPosition !== undefined && this.lastPosition !== null && this.lastPosition !== normalizedPosition)
+		{
+			this.homey.app.triggerPositionLessThan(this, { lastPosition: this.lastPosition, position: normalizedPosition }, { lastPosition: this.lastPosition, position: normalizedPosition }).catch(this.error);
+			this.homey.app.triggerPositionGreaterThan(this, { lastPosition: this.lastPosition, position: normalizedPosition }, { lastPosition: this.lastPosition, position: normalizedPosition }).catch(this.error);
+		}
+
+		this.lastPosition = normalizedPosition;
 	}
 
 	async pollHubDeviceValues()
@@ -102,19 +167,7 @@ class BlindTiltHubDevice extends HubDevice
 				this.setAvailable();
 				this.homey.app.updateLog(`Curtain Hub got: ${this.homey.app.varToString(data)}`, 3, 'hub');
 
-				const position = data.slidePosition / 100;
-				this.setCapabilityValue('windowcoverings_tilt_set', position).catch(this.error);
-
-				if (this.lastPosition)
-				{
-					if (this.lastPosition !== position)
-					{
-						this.homey.app.triggerPositionLessThan(this, { lastPosition: this.lastPosition, position }, { lastPosition: this.lastPosition, position }).catch(this.error);
-						this.homey.app.triggerPositionGreaterThan(this, { lastPosition: this.lastPosition, position }, { lastPosition: this.lastPosition, position }).catch(this.error);
-					}
-				}
-
-				this.lastPosition = position;
+				this.updatePosition(data.slidePosition / 100);
 
 				if (data.battery)
 				{
@@ -152,19 +205,7 @@ class BlindTiltHubDevice extends HubDevice
 			{
 				// message is for this device
 				const data = message.context;
-				const position = data.slidePosition / 100;
-				this.setCapabilityValue('windowcoverings_tilt_set', position).catch(this.error);
-
-				if (this.lastPosition)
-				{
-					if (this.lastPosition !== position)
-					{
-						this.homey.app.triggerPositionLessThan(this, { lastPosition: this.lastPosition, position }, { lastPosition: this.lastPosition, position }).catch(this.error);
-						this.homey.app.triggerPositionGreaterThan(this, { lastPosition: this.lastPosition, position }, { lastPosition: this.lastPosition, position }).catch(this.error);
-					}
-				}
-
-				this.lastPosition = position;
+				this.updatePosition(data.slidePosition / 100);
 
 				if (data.battery)
 				{
