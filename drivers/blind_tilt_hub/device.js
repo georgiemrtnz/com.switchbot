@@ -18,6 +18,7 @@ class BlindTiltHubDevice extends HubDevice
 		this.preferOAuthCommands = true;
 		await super.onInit();
 		await this.addMissingCapabilities();
+		this.initializePositionStatus();
 
 		// try
 		// {
@@ -54,6 +55,16 @@ class BlindTiltHubDevice extends HubDevice
 			{
 				await this.addCapability(capability);
 			}
+		}
+	}
+
+	initializePositionStatus()
+	{
+		const storedPosition = this.getCapabilityValue('windowcoverings_tilt_set');
+		const numericPosition = Number(storedPosition);
+		if (storedPosition !== null && Number.isFinite(numericPosition))
+		{
+			this.updatePosition(numericPosition);
 		}
 	}
 

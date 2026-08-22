@@ -154,3 +154,25 @@ test('existing devices receive every new capability without duplicate additions'
 		'position',
 	]);
 });
+
+test('new status initializes from the existing tilt reading', () => {
+	const positions = [];
+	const device = createDevice({
+		getCapabilityValue: () => 0,
+		updatePosition: (position) => positions.push(position),
+	});
+
+	device.initializePositionStatus();
+	assert.deepEqual(positions, [0]);
+});
+
+test('new status stays unset when there is no cached tilt reading', () => {
+	const positions = [];
+	const device = createDevice({
+		getCapabilityValue: () => null,
+		updatePosition: (position) => positions.push(position),
+	});
+
+	device.initializePositionStatus();
+	assert.deepEqual(positions, []);
+});
