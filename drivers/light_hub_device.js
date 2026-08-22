@@ -58,20 +58,24 @@ class LightHubDevice extends HubDevice
 	async onCapabilityDim(value, opts)
 	{
 		const command = 'setBrightness';
-		return this.sendCommand(command, value * 100);
+		const brightness = Math.round(Math.min(1, Math.max(0, value)) * 100);
+		return this.sendCommand(command, brightness);
 	}
 
 	async onCapabilityLightTemperature(value, opts)
 	{
 		// {2700-6500}
 		const command = 'setColorTemperature';
-		return this.sendCommand(command, ((1 - value) * (6500 - 2700)) + 2700);
+		const temperature = Math.round(((1 - Math.min(1, Math.max(0, value))) * (6500 - 2700)) + 2700);
+		return this.sendCommand(command, temperature);
 	}
 
 	async onCapabilityLightHueSat(capabilityValues, capabilityOptions)
 	{
 		// Convert Hue, Saturation, Dim to RGB
-		const dim = 0.5;
+		const storedDim = this.getCapabilityValue('dim');
+		const currentDim = Number(storedDim);
+		const dim = storedDim !== null && Number.isFinite(currentDim) ? Math.min(1, Math.max(0, currentDim)) : 0.5;
 		const rgb = this.hslToRgb(capabilityValues.light_hue, capabilityValues.light_saturation, dim);
 
 		const command = 'setColor';

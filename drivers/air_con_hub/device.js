@@ -41,7 +41,7 @@ class AirConHubDevice extends HubDevice
 		}
 		else
 		{
-			this.registerMultipleCapabilityListener(['onoff', 'target_temperature', 'aircon_mode', 'aircon_fan_speed'], this.onCapabilityAll.bind(this));
+			this.registerMultipleCapabilityListener(['target_temperature', 'aircon_mode', 'aircon_fan_speed'], this.onCapabilityAll.bind(this));
 		}
 
 		this.registerCapabilityListener('power_off', this.onCapabilityPowerOff.bind(this));

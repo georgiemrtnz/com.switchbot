@@ -82,13 +82,13 @@ class VacuumK11HubDevice extends HubDevice
 			times = '1';
 		}
 
-		let action = this.getCapabilityValue('robot_vaccum_clean_mode');
+		let action = this.getCapabilityValue('vaccum_clean_mode');
 		if (!action)
 		{
 			action = 'sweep';
 		}
 
-		this.startVacuum(action, fanLevel, times).catch(this.error);
+		return this.startVacuum(action, fanLevel, times);
 	}
 
 	async startVacuum(action, fanLevel, times)
