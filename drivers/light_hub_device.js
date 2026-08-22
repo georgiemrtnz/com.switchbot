@@ -73,9 +73,9 @@ class LightHubDevice extends HubDevice
 	async onCapabilityLightHueSat(capabilityValues, capabilityOptions)
 	{
 		// Convert Hue, Saturation, Dim to RGB
-		const storedDim = this.getCapabilityValue('dim');
-		const currentDim = Number(storedDim);
-		const dim = storedDim !== null && Number.isFinite(currentDim) ? Math.min(1, Math.max(0, currentDim)) : 0.5;
+		// SwitchBot stores color and brightness separately. Neutral HSL lightness
+		// keeps the requested hue/saturation intact without baking dim into RGB.
+		const dim = 0.5;
 		const rgb = this.hslToRgb(capabilityValues.light_hue, capabilityValues.light_saturation, dim);
 
 		const command = 'setColor';

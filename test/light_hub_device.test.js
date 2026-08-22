@@ -27,17 +27,17 @@ function createDevice(dim, overrides = {})
 	}, overrides);
 }
 
-test('color changes preserve the current Homey brightness', async () => {
+test('color changes encode hue and saturation independently from brightness', async () => {
 	const calls = [];
 	const device = createDevice(0.3, {
 		sendCommand: async (...args) => calls.push(args),
 	});
 
-	await device.onCapabilityLightHueSat({ light_hue: 0, light_saturation: 1 }, {});
-	assert.deepEqual(calls, [['setColor', '153:0:0']]);
+	await device.onCapabilityLightHueSat({ light_hue: 0.1, light_saturation: 1 }, {});
+	assert.deepEqual(calls, [['setColor', '255:153:0']]);
 });
 
-test('color changes fall back to a valid midpoint when brightness is unavailable', async () => {
+test('color changes use the same neutral lightness when brightness is unavailable', async () => {
 	const calls = [];
 	const device = createDevice(null, {
 		sendCommand: async (...args) => calls.push(args),
