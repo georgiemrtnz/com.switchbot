@@ -312,6 +312,10 @@ class HubDevice extends OAuth2Device
 
 				if (!result)
 				{
+					if (this.requireCommandAcceptance)
+					{
+						throw new Error('No SwitchBot command response; acceptance is unknown');
+					}
 					if (attempt < maxAttempts)
 					{
 						const baseDelay = 700 * (2 ** (attempt - 1));
@@ -327,6 +331,13 @@ class HubDevice extends OAuth2Device
 
 				responseCode = Number.parseInt(result.statusCode ?? result.body?.statusCode ?? 100, 10);
 				responseMessage = result.message ?? result.body?.message ?? '';
+
+				// Opt-in for devices where a status probe cannot prove a command ran.
+				if (this.requireCommandAcceptance && Number(result.statusCode ?? result.body?.statusCode) !== 100)
+				{
+					const rejectionCode = result.statusCode ?? result.body?.statusCode ?? 'missing status code';
+					throw new Error(`SwitchBot command not accepted: ${rejectionCode} ${responseMessage}`.trim());
+				}
 
 				if ((responseCode === 171) && (attempt < maxAttempts))
 				{
@@ -408,6 +419,10 @@ class HubDevice extends OAuth2Device
 
 		// No API key or OAuth client available, so we cannot send the command
 		this.logMissingAuthOnce(dd.id);
+		if (this.requireCommandAcceptance)
+		{
+			throw new Error('SwitchBot authentication is unavailable; command was not sent');
+		}
 		return false;
 	}
 
