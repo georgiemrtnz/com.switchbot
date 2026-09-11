@@ -1469,5 +1469,18 @@
 		"pl": "Zaktualizowano sondowanie BLE.",
 		"ru": "Обновлено опрос BLE.",
 		"ko": "BLE 폴링 업데이트."
+	},
+	"2.0.92": {
+		"en": "Added support for Lock Pro Matter Enabled(HUB).",
+		"no": "La til støtte for Lock Pro Matter Enabled(HUB).",
+		"nl": "Ondersteuning toegevoegd voor Lock Pro Matter Enabled(HUB).",
+		"de": "Unterstützung für Lock Pro Matter Enabled(HUB) hinzugefügt.",
+		"fr": "Ajout du support pour Lock Pro Matter Enabled(HUB).",
+		"es": "Se agregó soporte para Lock Pro Matter Enabled(HUB).",
+		"pt": "Adicionado suporte para Lock Pro Matter Enabled(HUB).",
+		"it": "Aggiunto supporto per Lock Pro Matter Enabled(HUB).",
+		"pl": "Dodano obsługę Lock Pro Matter Enabled(HUB).",
+		"ru": "Добавлена поддержка Lock Pro Matter Enabled(HUB).",
+		"ko": "Lock Pro Matter Enabled(HUB)에 대한 지원이 추가되었습니다."
 	}
 }
