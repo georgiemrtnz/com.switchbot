@@ -109,12 +109,16 @@ class HubDriver extends OAuth2Driver
 								data = {
 									id: device.deviceId,
 									diy: true,
+									deviceName: device.deviceName,
+									type: device.remoteType,
 								};
 							}
 							else
 							{
 								data = {
 									id: device.deviceId,
+									deviceName: device.deviceName,
+									type: device.remoteType,
 								};
 							}
 
@@ -171,6 +175,7 @@ class HubDriver extends OAuth2Driver
 								data = {
 									id: device.deviceId,
 									type: device.deviceType,
+									deviceName: device.deviceName,
 								};
 
 								// Add this device to the table
