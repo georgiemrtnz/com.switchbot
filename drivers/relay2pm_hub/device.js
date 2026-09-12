@@ -114,8 +114,8 @@ class Relay2pmHubDevice extends HubDevice
 				this.setCapabilityValue('measure_current.one', data.switch1ElectricCurrent / 1000).catch(this.error);
 				this.setCapabilityValue('measure_current.two', data.switch2ElectricCurrent / 1000).catch(this.error);
 
-				this.setCapabilityValue('meter_power.one', data.switch1UsedElectricity / 1000 / 60).catch(this.error);
-				this.setCapabilityValue('meter_power.two', data.switch2UsedElectricity / 1000 / 60).catch(this.error);
+				await this.setDailyEnergyMeterValue('meter_power.one', data.switch1UsedElectricity);
+				await this.setDailyEnergyMeterValue('meter_power.two', data.switch2UsedElectricity);
 
 				// Trigger flows for on/off
 				if ((data.switch1Status === 1) && (oldRelay1Status !== true))

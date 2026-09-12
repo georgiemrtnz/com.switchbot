@@ -135,9 +135,9 @@ class RelayHubDevice extends HubDevice
 					this.setCapabilityValue('measure_power', data.power).catch(this.error);
 					// Relay Switch 1PM reports electricCurrent in mA; measure_current expects Amps.
 					this.setCapabilityValue('measure_current', data.electricCurrent / 1000).catch(this.error);
-					// usedElectricity is daily consumption in watt-minutes; meter_power expects kWh
-					// (watt-minutes / 60 = Wh, / 1000 = kWh). Matches plug_eu_hub.
-					this.setCapabilityValue('meter_power', data.usedElectricity / 60000).catch(this.error);
+					// SwitchBot resets usedElectricity daily. Convert it to the monotonic
+					// cumulative kWh value required by Homey's meter_power capability.
+					await this.setDailyEnergyMeterValue('meter_power', data.usedElectricity);
 				}
 			}
 			this.unsetWarning().catch(this.error);
