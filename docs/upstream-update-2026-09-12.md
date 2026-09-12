@@ -40,3 +40,15 @@ Existing driver IDs, capabilities, Flow card IDs, and argument names/types are r
 - No physical device command was issued as a test.
 
 Tracking: [ALI-153](https://linear.app/alienops/issue/ALI-153).
+
+## Deployment outcome
+
+The final production package (6.93 MB / 541 files according to the CLI) was installed successfully with `homey app install`, retaining settings. An initial `--skip-build` installation included unnecessary development dependencies; after that request completed, it was replaced by the normal production package. Future installs must use the normal install command from this checkout, not `--skip-build` against the source directory.
+
+Live readback confirmed version 2.0.92, origin `devkit_install`, running and not crashed. All 72 SwitchBot devices retained their IDs, pairing-data hashes, settings hashes, and capability arrays, and all were available. All 117 Flow definitions/enabled flags matched the preinstall hashes, with no broken Flows. Existing cumulative energy readings did not decrease. The new Lock Pro Matter Hub driver is registered, and BLE settings, log-filter options, BLE statistics, and cached discovery endpoints returned HTTP 200.
+
+There are no paired BLE drivers on this Homey, so the BLE algorithm was verified through regression tests and live endpoint availability rather than a paired BLE hardware test. New lock hardware and physical commands were not tested. The observed app memory was about 47 MiB shortly after installation; this is not a long-term reliability measurement.
+
+The updated source is in the isolated `SwitchBotHomeyUpdate` checkout and GitHub branch `update/upstream-2.0.92-preserve-custom`. The original `SwitchBotHomeyFix` checkout, including its preexisting uncommitted work, remains intact.
+
+GitHub review: [PR #2](https://github.com/georgiemrtnz/com.switchbot/pull/2).
