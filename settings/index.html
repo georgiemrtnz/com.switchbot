@@ -725,6 +725,13 @@
 				return;
 			}
 
+			const escapeHtml = (value) => String(value)
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;')
+				.replace(/'/g, '&#39;');
+
 			const sortedRows = rows
 				.slice()
 				.sort((left, right) => compareBLEStatisticsRows(left, right, bleStatisticsSort.key, bleStatisticsSort.direction));
@@ -732,11 +739,11 @@
 			tbody.innerHTML = sortedRows.map((row) => {
 				const lastSeenText = formatElapsedSince(row.lastSeenAt);
 				const rssiText = (typeof row.rssi === 'number' && Number.isFinite(row.rssi)) ? String(Math.round(row.rssi)) : '-';
-				const macText = (row.mac || '').replace(/[<>]/g, '');
-				const driverText = (row.driverType || '').replace(/[<>]/g, '');
+				const macText = escapeHtml(row.mac || '');
+				const driverText = escapeHtml(row.driverType || '');
 				return `
 					<tr>
-						<td style="padding:6px 8px;">${(row.name || 'Unknown').replace(/[<>]/g, '')}</td>
+						<td style="padding:6px 8px;">${escapeHtml(row.name || 'Unknown')}</td>
 						<td style="padding:6px 8px;">${macText}</td>
 						<td style="padding:6px 8px;">${driverText}</td>
 						<td style="padding:6px 8px; text-align:right;">${Number(row.missing || 0)}</td>
