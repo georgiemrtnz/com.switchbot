@@ -12,7 +12,7 @@
 	"dependencies": {
 		"crc-32": "^1.2.2",
 		"homey-oauth2app": "^3.3.0",
-		"nodemailer": "^8.0.5"
+		"nodemailer": "^10.0.10"
 	},
 	"devDependencies": {
 		"@eslint/eslintrc": "^3.3.1",
