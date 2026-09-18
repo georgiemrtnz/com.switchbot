@@ -203,6 +203,7 @@ class PresenceBLEDevice extends Homey.Device
 					const name = this.getName();
 					this.homey.app.updateLog(`BLE device ${name} (MAC: ${deviceMac}) not found`, 'ble');
 					await this.recordPeripheralMiss(deviceMac);
+					this.homey.app.markBLEPollServiceData(this, false);
 					return;
 				}
 

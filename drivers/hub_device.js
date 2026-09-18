@@ -3,12 +3,28 @@
 'use strict';
 
 const { OAuth2Device } = require('homey-oauth2app');
+const cumulativeDailyMeter = require('../lib/cumulative-daily-meter');
 
 const MISSING_AUTH_LOG_THROTTLE_MS = 5 * 60 * 1000;
 const DEVICE_OFFLINE_COOLDOWN_MS = 30 * 1000;
 
 class HubDevice extends OAuth2Device
 {
+
+	async setDailyEnergyMeterValue(capabilityId, usedElectricityWattMinutes)
+	{
+		const dailyKWh = Number(usedElectricityWattMinutes) / 60000;
+		const storeKey = `cumulative_daily_meter_${capabilityId.replace(/[^a-z0-9]/gi, '_')}`;
+		const result = cumulativeDailyMeter({
+			dailyKWh,
+			previousState: this.getStoreValue(storeKey),
+			currentCapabilityValue: this.getCapabilityValue(capabilityId),
+		});
+
+		await this.setStoreValue(storeKey, result.state);
+		await this.setCapabilityValue(capabilityId, result.value);
+		return result.value;
+	}
 
 	getOAuth2ClientForDevice()
 	{

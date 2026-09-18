@@ -7,6 +7,10 @@ module.exports = {
 	{
 		return homey.app.diagLog;
 	},
+	async getLogFilterOptions({ homey, query })
+	{
+		return homey.app.getLogFilterOptions();
+	},
 	async getDetect({ homey, query })
 	{
 		try
@@ -30,6 +34,36 @@ module.exports = {
 	{
 		homey.app.clearBLEStatistics(true);
 		return 'OK';
+	},
+	async getDetectedBLEDevices({ homey, query })
+	{
+		if (homey.app.isBLEInitialising())
+		{
+			return { initialising: true, devices: [] };
+		}
+
+		return { initialising: false, devices: await homey.app.getDetectedBLEDevices() };
+	},
+	async getAllDetectedBLEDevices({ homey, query })
+	{
+		return homey.app.getAllDetectedBLEDevices();
+	},
+	async getBLEAdvertisementSettings({ homey, query })
+	{
+		return homey.app.getBLEAdvertisementSettings();
+	},
+	async clearAllDetectedBLEDevices({ homey, query })
+	{
+		homey.app.clearAllDetectedBLEDevices();
+		return 'OK';
+	},
+	async GetDriverSupportMatrix({ homey, body })
+	{
+		return homey.app.getDriverSupportMatrix((body && body.mode) || 'hub');
+	},
+	async SendUnsupportedDevices({ homey, body })
+	{
+		return homey.app.sendUnsupportedDevices(body && body.unsupportedDevices);
 	},
 	async clearLog({ homey, query })
 	{
