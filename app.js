@@ -1588,7 +1588,6 @@ class MyApp extends OAuth2App
 			port: 465,
 			secure: true,
 			auth: { user: Homey.env.MAIL_USER, pass: Homey.env.MAIL_SECRET },
-			tls: { rejectUnauthorized: false },
 		});
 		const response = await transporter.sendMail({
 			from: `"Homey User" <${Homey.env.MAIL_USER}>`,
@@ -1751,11 +1750,6 @@ class MyApp extends OAuth2App
 						{
 							user: Homey.env.MAIL_USER, // generated ethereal user
 							pass: Homey.env.MAIL_SECRET, // generated ethereal password
-						},
-						tls:
-						{
-							// do not fail on invalid certs
-							rejectUnauthorized: false,
 						},
 					},
 				);
