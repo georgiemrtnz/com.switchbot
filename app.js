@@ -1272,11 +1272,6 @@ class MyApp extends OAuth2App
 							user: Homey.env.MAIL_USER, // generated ethereal user
 							pass: Homey.env.MAIL_SECRET, // generated ethereal password
 						},
-						tls:
-						{
-							// do not fail on invalid certs
-							rejectUnauthorized: false,
-						},
 					},
 				);
 
