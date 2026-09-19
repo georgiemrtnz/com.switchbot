@@ -13,6 +13,10 @@ class PlugHubDevice extends HubDevice
 	async onInit()
 	{
 		await super.onInit();
+		if (!this.hasCapability('plug_last_polled'))
+		{
+			await this.addCapability('plug_last_polled');
+		}
 
 		this.registerCapabilityListener('onoff', this.onCapabilityOnOff.bind(this));
 
@@ -85,6 +89,13 @@ class PlugHubDevice extends HubDevice
 			{
 				this.setAvailable();
 				this.homey.app.updateLog(`Plug Hub got: ${this.homey.app.varToString(data)}`, 3, 'hub');
+				const hasStatus = data.power === 'on' || data.power === 'off'
+					|| Number.isFinite(data.electricCurrent) || Number.isFinite(data.voltage)
+					|| Number.isFinite(data.weight);
+				if (hasStatus)
+				{
+					await this.setCapabilityValue('plug_last_polled', new Date().toISOString());
+				}
 
 				if (data.power)
 				{
