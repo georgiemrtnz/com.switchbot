@@ -10513,7 +10513,8 @@
       "capabilities": [
         "onoff",
         "measure_current",
-        "measure_voltage"
+        "measure_voltage",
+        "plug_last_polled"
       ]
     },
     {
@@ -14780,6 +14781,14 @@
         "ko": "장면 재생"
       },
       "icon": "/assets/play_scene.svg"
+    },
+    "plug_last_polled": {
+      "type": "string",
+      "title": {
+        "en": "Last verified plug poll (UTC)"
+      },
+      "getable": true,
+      "setable": false
     },
     "position": {
       "type": "number",

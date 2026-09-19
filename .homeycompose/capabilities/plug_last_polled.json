@@ -1,0 +1,1 @@
+{ "type": "string", "title": { "en": "Last verified plug poll (UTC)" }, "getable": true, "setable": false }
