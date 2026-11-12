@@ -144,3 +144,91 @@ test('Stop preserves a successful pause when its verification read fails', async
 	assert.deepEqual(calls, [['pause', 'default']]);
 	assert.match(logs[0][0], /temporary status error/);
 });
+
+test('normalizes a calibrated stationary close endpoint while preserving raw position', async () => {
+	const values = {};
+	const device = createDevice({
+		getData: () => ({ id: 'test' }),
+		setAvailable: () => {}, unsetWarning: async () => {}, error: () => {},
+		hasCapability: () => true,
+		setCapabilityValue: async (key, value) => { values[key] = value; },
+		homey: { app: { updateLog: () => {}, varToString: String } },
+		_getHubDeviceValues: async () => ({ slidePosition: 99, moving: false, calibrate: true }),
+		pendingCloseUntil: Date.now() + 10000,
+	});
+	await device.getHubDeviceValues();
+	assert.equal(values.windowcoverings_set, 0);
+	assert.ok(Math.abs(values.position - 1) < 0.00001);
+	device.pendingCloseUntil = null;
+	await device.getHubDeviceValues();
+	assert.equal(values.windowcoverings_set, 0);
+	device.closeEndpointLatched = false;
+	await device.getHubDeviceValues();
+	assert.ok(Math.abs(values.windowcoverings_set - 0.01) < 0.00001);
+});
+
+test('requires calibrated stationary feedback within the pending window', async () => {
+	for (const data of [
+		{ slidePosition: 99, moving: true, calibrate: true },
+		{ slidePosition: 99, moving: false, calibrate: false },
+		{ slidePosition: 99, moving: false },
+	]) {
+		const values = {};
+		const device = createDevice({
+			getData: () => ({ id: 'test' }), setAvailable: () => {}, unsetWarning: async () => {}, error: () => {},
+			hasCapability: () => true, setCapabilityValue: async (key, value) => { values[key] = value; },
+			homey: { app: { updateLog: () => {}, varToString: String } },
+			_getHubDeviceValues: async () => data, pendingCloseUntil: Date.now() + 10000,
+		});
+		await device.getHubDeviceValues();
+		assert.ok(Math.abs(values.windowcoverings_set - 0.01) < 0.00001);
+	}
+});
+
+test('deliberate one-percent command does not arm close tolerance', async () => {
+	const device = createDevice({ _operateCurtain: async () => true });
+	await device.onCapabilityPosition(0.01);
+	assert.equal(device.pendingCloseUntil, undefined);
+	await device.onCapabilityPosition(0);
+	assert.ok(device.pendingCloseUntil > Date.now());
+});
+
+test('ignores a poll overtaken by a newer command', async () => {
+	let resolvePoll;
+	const values = {};
+	const device = createDevice({
+		commandSequence: 1,
+		_getHubDeviceValues: () => new Promise(resolve => { resolvePoll = resolve; }),
+		setCapabilityValue: async (key, value) => { values[key] = value; },
+		homey: { app: { updateLog: () => {}, varToString: String } },
+	});
+	const poll = device.getHubDeviceValues();
+	device.commandSequence = 2;
+	resolvePoll({ slidePosition: 99, moving: false, calibrate: true });
+	await poll;
+	assert.deepEqual(values, {});
+});
+
+test('full close via directional action arms tolerance after success', async () => {
+	const device = createDevice({ _operateCurtain: async () => true });
+	await device.close();
+	assert.ok(device.pendingCloseUntil > Date.now());
+});
+
+test('webhook preserves a confirmed endpoint and raw telemetry', async () => {
+	const values = {};
+	const device = createDevice({
+		getData: () => ({ id: 'test' }),
+		closeEndpointLatched: true,
+		setCapabilityValue: async (key, value) => { values[key] = value; },
+		hasCapability: () => true,
+		error: () => {},
+		homey: { setTimeout: () => 1, app: {
+			updateLog: () => {}, varToString: String,
+			triggerPositionLessThan: async () => {}, triggerPositionGreaterThan: async () => {},
+		} },
+	});
+	await device.processWebhookMessage({ context: { deviceMac: 'test', slidePosition: 99 } });
+	assert.equal(values.windowcoverings_set, 0);
+	assert.ok(Math.abs(values.position - 1) < 0.00001);
+});
