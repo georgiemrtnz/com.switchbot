@@ -163,3 +163,16 @@ test('the real command path clears the correction before calling SwitchBot', asy
 	assert.equal(latchedAtSend, false);
 	assert.equal(persisted.store.closeEndpointLatch, null);
 });
+
+test('a never-latched curtain does not write the store after a restart', async () => {
+	const persisted = closedHome();
+	const telemetry = { current: { slidePosition: 40, moving: false, calibrate: true } };
+	const { device, writes } = createDevice(persisted, telemetry);
+	assert.equal(device.restoreCloseEndpointLatch(), false);
+	await device.getHubDeviceValues();
+	await device.processWebhookMessage({ context: { deviceMac: 'curtain', slidePosition: 30, moving: true } });
+	device.homey.app.getFirstSavedOAuth2Client = () => ({ setDeviceData: async () => ({ statusCode: 100 }) });
+	await device._operateCurtain('setPosition', '0,ff,50');
+	await flush();
+	assert.deepEqual(writes, [], 'clearing an unset latch must not touch the store');
+});

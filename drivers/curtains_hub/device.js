@@ -304,7 +304,8 @@ class CurtainsHubDevice extends HubDevice
 	setCloseEndpointLatched(latched)
 	{
 		const next = latched === true;
-		const changed = this.closeEndpointLatched !== next;
+		// An unset latch (fresh instance) is the same state as false: no write.
+		const changed = (this.closeEndpointLatched === true) !== next;
 		this.closeEndpointLatched = next;
 		if (!changed || typeof this.setStoreValue !== 'function') return;
 		const value = next ? { latched: true, at: new Date().toISOString() } : null;
