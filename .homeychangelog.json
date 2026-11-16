@@ -1506,5 +1506,8 @@
 	},
 	"2.0.100": {
 		"en": "Sends one Homey notification per day when SwitchBot cloud API use reaches 8,000 of the 10,000 daily calls."
+	},
+	"2.0.102": {
+		"en": "Curtains keep showing fully closed after an app restart when they were closed from Homey and have not moved since."
 	}
 }

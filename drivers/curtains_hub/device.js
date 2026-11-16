@@ -54,6 +54,8 @@ class CurtainsHubDevice extends HubDevice
 		// {
 		// 	this.setUnavailable(err.message);
 		// }
+		this.restoreCloseEndpointLatch();
+
 		this.registerCapabilityListener('windowcoverings_closed', this.onCapabilityopenClose.bind(this));
 		this.registerCapabilityListener('windowcoverings_set', this.onCapabilityPosition.bind(this));
 		this.registerCapabilityListener('windowcoverings_state', this.onCapabilityState.bind(this));
@@ -296,11 +298,44 @@ class CurtainsHubDevice extends HubDevice
 		return result;
 	}
 
+	// The close-endpoint correction (raw 99 reported as Homey 0) is kept in the
+	// device store so an app restart does not bring back the 1% reading. Only
+	// state changes are written.
+	setCloseEndpointLatched(latched)
+	{
+		const next = latched === true;
+		const changed = this.closeEndpointLatched !== next;
+		this.closeEndpointLatched = next;
+		if (!changed || typeof this.setStoreValue !== 'function') return;
+		const value = next ? { latched: true, at: new Date().toISOString() } : null;
+		Promise.resolve()
+			.then(() => this.setStoreValue('closeEndpointLatch', value))
+			.catch(err => this.error && this.error(err));
+	}
+
+	// Re-arm a stored correction only while Homey still holds the closed
+	// endpoint (0 or the raw 1%). The next poll or webhook keeps it only if the
+	// curtain is still stationary at the endpoint; any other reading clears it.
+	restoreCloseEndpointLatch()
+	{
+		const stored = typeof this.getStoreValue === 'function' ? this.getStoreValue('closeEndpointLatch') : null;
+		if (!stored || stored.latched !== true) return false;
+		const current = typeof this.getCapabilityValue === 'function' ? this.getCapabilityValue('windowcoverings_set') : null;
+		if (typeof current === 'number' && current <= 0.01 + 0.000001)
+		{
+			this.closeEndpointLatched = true;
+			return true;
+		}
+		this.closeEndpointLatched = true;
+		this.setCloseEndpointLatched(false);
+		return false;
+	}
+
 	async _operateCurtain(command, parameter)
 	{
 		this.commandSequence = (this.commandSequence || 0) + 1;
 		this.pendingCloseUntil = null;
-		this.closeEndpointLatched = false;
+		this.setCloseEndpointLatched(false);
 		this.setCapabilityValue('position', null).catch(this.error);
 		const data = {
 			command,
@@ -360,11 +395,11 @@ class CurtainsHubDevice extends HubDevice
 				const nearClose = Math.abs(physicalPosition - 0.01) < 0.000001;
 				if (this.pendingCloseUntil > Date.now() && data.moving === false && data.calibrate === true && nearClose)
 				{
-					this.closeEndpointLatched = true;
+					this.setCloseEndpointLatched(true);
 				}
 				if (!nearClose || data.moving === true)
 				{
-					this.closeEndpointLatched = false;
+					this.setCloseEndpointLatched(false);
 				}
 				const position = this.closeEndpointLatched && nearClose ? 0 : physicalPosition;
 
@@ -449,7 +484,7 @@ class CurtainsHubDevice extends HubDevice
 				const nearClose = Math.abs(physicalPosition - 0.01) < 0.000001;
 				if (!nearClose || data.moving === true)
 				{
-					this.closeEndpointLatched = false;
+					this.setCloseEndpointLatched(false);
 				}
 				const position = this.closeEndpointLatched && nearClose ? 0 : physicalPosition;
 
