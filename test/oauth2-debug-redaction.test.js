@@ -130,14 +130,22 @@ test('requests leave no per-instance debug override and do not grow the heap', a
 	const postReq = { method: 'POST', path: '/commands', opts: { headers: { Authorization: 'Bearer x' } } };
 	for (let i = 0; i < 1000; i++) await client._executeRequest(i % 2 ? getReq : postReq);
 
-	gc(); gc();
-	const before = process.memoryUsage().heapUsed;
-	for (let i = 0; i < 10000; i++) await client._executeRequest(i % 2 ? getReq : postReq);
-	await Promise.all(Array.from({ length: 50 }, (_, i) => client._executeRequest(i % 2 ? getReq : postReq)));
-	gc(); gc();
-	const growth = process.memoryUsage().heapUsed - before;
+	// A per-request leak grows the heap in every round (the old bind chain kept
+	// ~48 B per request, ~480 KB per round). Unrelated test-runner allocations
+	// are occasional, so the smallest round's growth is the reliable signal.
+	const growths = [];
+	for (let round = 0; round < 3; round++)
+	{
+		gc(); gc();
+		const before = process.memoryUsage().heapUsed;
+		for (let i = 0; i < 10000; i++) await client._executeRequest(i % 2 ? getReq : postReq);
+		await Promise.all(Array.from({ length: 50 }, (_, i) => client._executeRequest(i % 2 ? getReq : postReq)));
+		gc(); gc();
+		growths.push(process.memoryUsage().heapUsed - before);
+	}
 
 	assert.equal(Object.prototype.hasOwnProperty.call(client, 'debug'), false);
 	assert.equal(client.debug, OAuthClient.prototype.debug);
-	assert.ok(growth < 100 * 1024, `heap grew ${growth} bytes over 10,050 requests`);
+	const growth = Math.min(...growths);
+	assert.ok(growth < 100 * 1024, `heap grew ${growths.join(', ')} bytes per 10,050 requests`);
 });
