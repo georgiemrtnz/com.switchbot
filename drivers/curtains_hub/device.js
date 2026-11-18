@@ -334,7 +334,9 @@ class CurtainsHubDevice extends HubDevice
 			this.setCloseEndpointLatched(true);
 			this.pendingCloseUntil = null;
 		}
-		else if (stationary && !nearClose)
+		// Only an explicit stationary poll ends a pending close. Webhooks fire
+		// mid-travel and may omit `moving`, so they must never cancel it.
+		else if (!fromWebhook && stationary && !nearClose)
 		{
 			this.pendingCloseUntil = null;
 		}

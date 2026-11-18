@@ -87,6 +87,17 @@ test('a close that stops short ends the pending close; a later external 1% stays
 	assert.ok(Math.abs(persisted.capabilities.windowcoverings_set - 0.01) < 0.00001);
 });
 
+test('a mid-travel webhook without moving does not cancel the pending close', async () => {
+	const telemetry = { current: { slidePosition: 99, moving: false, calibrate: true } };
+	const { device, persisted } = createDevice(telemetry);
+	await device.runToPos(100, 0xff, true);
+	await device.processWebhookMessage(webhook({ slidePosition: 96 }));
+	assert.ok(device.pendingCloseUntil > Date.now());
+	await device.getHubDeviceValues();
+	await flush();
+	assert.equal(persisted.capabilities.windowcoverings_set, 0);
+});
+
 test('an uncalibrated curtain is never latched', async () => {
 	const telemetry = { current: { slidePosition: 99, moving: false, calibrate: false } };
 	const { device, persisted } = createDevice(telemetry);

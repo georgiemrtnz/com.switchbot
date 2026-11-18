@@ -1515,5 +1515,8 @@
 	},
 	"2.0.105": {
 		"en": "Curtain shows fully closed after a close even when the confirming update arrives late or by webhook"
+	},
+	"2.0.106": {
+		"en": "A curtain update during travel no longer cancels the closed-position correction"
 	}
 }
