@@ -13,7 +13,6 @@ const fs = require('fs').promises;
 const path = require('path');
 const tls = require('tls');
 const { OAuth2App } = require('homey-oauth2app');
-const nodemailer = require('nodemailer');
 const HubInterface = require('./lib/hub_interface');
 const BLEHubInterface = require('./lib/ble_hub_interface');
 const SwitchBotOAuth2Client = require('./lib/SwitchBotOAuth2Client');
@@ -46,6 +45,34 @@ function createPinnedMailSocket(options, callback)
 	});
 	socket.once('error', (err) => callback(err));
 	return socket;
+}
+
+// nodemailer is only needed by the user-triggered diagnostic email actions, so
+// load it on first use instead of keeping it resident in every app process.
+let nodemailerModule = null;
+function getNodemailer()
+{
+	if (!nodemailerModule)
+	{
+		// eslint-disable-next-line global-require
+		nodemailerModule = require('nodemailer');
+	}
+	return nodemailerModule;
+}
+
+// Each send creates its own pooled transporter; close it afterwards so no idle
+// SMTP pool socket outlives the send.
+async function sendDiagnosticMail(transportOptions, message)
+{
+	const transporter = getNodemailer().createTransport(transportOptions);
+	try
+	{
+		return await transporter.sendMail(message);
+	}
+	finally
+	{
+		transporter.close();
+	}
 }
 
 const MINIMUM_POLL_INTERVAL = 15; // in Seconds
@@ -1655,7 +1682,7 @@ class MyApp extends OAuth2App
 			throw new Error('No unsupported devices to send');
 		}
 
-		const transporter = nodemailer.createTransport({
+		const response = await sendDiagnosticMail({
 			pool: true,
 			maxConnections: 1,
 			host: Homey.env.MAIL_HOST,
@@ -1663,8 +1690,7 @@ class MyApp extends OAuth2App
 			secure: true,
 			auth: { user: Homey.env.MAIL_USER, pass: Homey.env.MAIL_SECRET },
 			getSocket: createPinnedMailSocket,
-		});
-		const response = await transporter.sendMail({
+		}, {
 			from: `"Homey User" <${Homey.env.MAIL_USER}>`,
 			to: Homey.env.MAIL_RECIPIENT,
 			subject: `SwitchBot unsupported devices (${this.homeyHash} : ${Homey.manifest.version})`,
@@ -1814,8 +1840,8 @@ class MyApp extends OAuth2App
 
 				subject += `(${this.homeyHash} : ${Homey.manifest.version})`;
 
-				// create reusable transporter object using the default SMTP transport
-				const transporter = nodemailer.createTransport(
+				// create a transporter for this send (closed after sending) and send mail
+				const response = await sendDiagnosticMail(
 					{
 						pool: true,
 						maxConnections: 1,
@@ -1830,10 +1856,6 @@ class MyApp extends OAuth2App
 						},
 						getSocket: createPinnedMailSocket,
 					},
-				);
-
-				// send mail with defined transport object
-				const response = await transporter.sendMail(
 					{
 						from: `"Homey User" <${Homey.env.MAIL_USER}>`, // sender address
 						to: Homey.env.MAIL_RECIPIENT, // list of receivers
