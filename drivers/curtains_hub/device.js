@@ -4,6 +4,10 @@
 
 const HubDevice = require('../hub_device');
 
+// Upper bound on how long a Homey close waits for its confirming stationary
+// reading. Polls can be minutes apart (rate-limit pauses), so this is generous.
+const CLOSE_CONFIRM_MAX_MS = 6 * 60 * 60 * 1000;
+
 class CurtainsHubDevice extends HubDevice
 {
 
@@ -201,7 +205,8 @@ class CurtainsHubDevice extends HubDevice
 		const result = await operation;
 		if (result !== false && this.commandSequence === commandSequence)
 		{
-			this.pendingCloseUntil = Date.now() + 120000;
+			// Long safety bound only; the next stationary reading resolves it.
+			this.pendingCloseUntil = Date.now() + CLOSE_CONFIRM_MAX_MS;
 		}
 		return result;
 	}
@@ -293,7 +298,8 @@ class CurtainsHubDevice extends HubDevice
 		const result = await operation;
 		if (exactHomeyClose && result !== false && this.commandSequence === commandSequence)
 		{
-			this.pendingCloseUntil = Date.now() + 120000;
+			// Long safety bound only; the next stationary reading resolves it.
+			this.pendingCloseUntil = Date.now() + CLOSE_CONFIRM_MAX_MS;
 		}
 		return result;
 	}
@@ -312,6 +318,30 @@ class CurtainsHubDevice extends HubDevice
 		Promise.resolve()
 			.then(() => this.setStoreValue('closeEndpointLatch', value))
 			.catch(err => this.error && this.error(err));
+	}
+
+	// A Homey exact close stays pending until the curtain reports a stationary
+	// reading, however long the travel or the next poll/webhook takes. A
+	// stationary reading at the raw 1% endpoint confirms the close (poll or
+	// webhook); a stationary reading anywhere else ends the pending close.
+	applyCloseConfirmation(data, nearClose, fromWebhook = false)
+	{
+		const stationary = fromWebhook ? data.moving !== true : data.moving === false;
+		// Polls carry calibrate and must report it true; webhooks omit it.
+		const calibrated = fromWebhook ? data.calibrate !== false : data.calibrate === true;
+		if (this.pendingCloseUntil > Date.now() && stationary && calibrated && nearClose)
+		{
+			this.setCloseEndpointLatched(true);
+			this.pendingCloseUntil = null;
+		}
+		else if (stationary && !nearClose)
+		{
+			this.pendingCloseUntil = null;
+		}
+		if (!nearClose || data.moving === true)
+		{
+			this.setCloseEndpointLatched(false);
+		}
 	}
 
 	// Re-arm a stored correction only while Homey still holds the closed
@@ -394,14 +424,7 @@ class CurtainsHubDevice extends HubDevice
 
 				const physicalPosition = this.switchBotPositionToHomey(data.slidePosition);
 				const nearClose = Math.abs(physicalPosition - 0.01) < 0.000001;
-				if (this.pendingCloseUntil > Date.now() && data.moving === false && data.calibrate === true && nearClose)
-				{
-					this.setCloseEndpointLatched(true);
-				}
-				if (!nearClose || data.moving === true)
-				{
-					this.setCloseEndpointLatched(false);
-				}
+				this.applyCloseConfirmation(data, nearClose);
 				const position = this.closeEndpointLatched && nearClose ? 0 : physicalPosition;
 
 				if (position < 0.5)
@@ -483,10 +506,7 @@ class CurtainsHubDevice extends HubDevice
 				const data = message.context;
 				const physicalPosition = this.switchBotPositionToHomey(data.slidePosition);
 				const nearClose = Math.abs(physicalPosition - 0.01) < 0.000001;
-				if (!nearClose || data.moving === true)
-				{
-					this.setCloseEndpointLatched(false);
-				}
+				this.applyCloseConfirmation(data, nearClose, true);
 				const position = this.closeEndpointLatched && nearClose ? 0 : physicalPosition;
 
 				if (position < 0.5)

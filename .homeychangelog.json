@@ -1512,5 +1512,8 @@
 	},
 	"2.0.104": {
 		"en": "Uses less memory over long uptimes: request logging no longer builds up with every SwitchBot cloud call, and the email component loads only when a log is sent."
+	},
+	"2.0.105": {
+		"en": "Curtain shows fully closed after a close even when the confirming update arrives late or by webhook"
 	}
 }
